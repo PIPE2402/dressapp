@@ -1,0 +1,18 @@
+{
+  "id": "/",
+  "name": "Dressapp",
+  "short_name": "Dressapp",
+  "description": "Reconoce enlaces y guarda videos MP4 o audio MP3 desde tu dispositivo.",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#02080e",
+  "theme_color": "#02080e",
+  "categories": ["utilities", "entertainment"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
