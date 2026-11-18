@@ -4,7 +4,7 @@ const format=document.querySelector('#format');
 const quality=document.querySelector('#quality');
 const submit=document.querySelector('#submit');
 const urlInput=document.querySelector('#url'),linkStatus=document.querySelector('#link-status');
-let submitting=false;
+let submitting=false,onlineFile;
 const platforms=['youtube.com','youtu.be','instagram.com','tiktok.com','facebook.com','fb.watch'];
 
 function validLink(value){
@@ -32,8 +32,11 @@ function saveFile(url,name){
  document.body.append(link);link.click();link.remove();
 }
 async function downloadOnline(options){
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),125000);
+ try{
  const response=await fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},
- body:JSON.stringify(options),signal:AbortSignal.timeout(125000)});
+ body:JSON.stringify(options),signal:controller.signal});
  if(!response.ok){
  const error=await response.json().catch(()=>null);
  throw Error(typeof error?.detail==='string'?error.detail:'El servicio de descargas no pudo completar la solicitud.');
@@ -41,10 +44,22 @@ async function downloadOnline(options){
  const type=options.format==='mp3'?'audio/mpeg':'video/mp4';
  if(!response.headers.get('content-type')?.startsWith(type))throw Error('El servicio de descargas no devolvió el archivo.');
  const file=await response.blob();
+ if(!file.size)throw Error('El servidor devolvió un archivo vacío. Inténtalo de nuevo.');
  const url=URL.createObjectURL(file);
- saveFile(url,`Dressapp.${options.format}`);
- setTimeout(()=>URL.revokeObjectURL(url),60000);
- msg.textContent='Archivo enviado a las descargas del navegador.';
+ const card=document.createElement('article');
+ const title=document.createElement('h3');
+ const link=document.createElement('a');
+ card.className='job';card.dataset.status='done';
+ title.textContent='Archivo listo';
+ link.href=url;link.download=`Dressapp.${options.format}`;
+ link.textContent=`Guardar ${options.format.toUpperCase()} ↓`;
+ card.append(title,link);
+ if(onlineFile){URL.revokeObjectURL(onlineFile.url);onlineFile.card.remove();}
+ onlineFile={url,card};
+ document.querySelector('#results').prepend(card);
+ card.scrollIntoView({block:'nearest'});
+ link.click();
+ }finally{clearTimeout(timeout);}
 }
 urlInput.setAttribute('aria-describedby','link-status');
 urlInput.addEventListener('input',()=>{msg.textContent='';updateSubmit();});
@@ -62,6 +77,10 @@ form.onsubmit=async e=>{
  const options={url:urlInput.value.trim(),format:format.value,quality:quality.value};
  submitting=true;updateSubmit();
  try{
+ if(location.hostname.endsWith('.vercel.app')){
+ await downloadOnline(options);
+ return;
+ }
  const inspection=await fetch('/api/inspect',{method:'POST',headers:{'Content-Type':'application/json'},
  body:JSON.stringify({url:options.url}),signal:AbortSignal.timeout(65000)});
  if(inspection.status===404||!inspection.headers.get('content-type')?.includes('application/json')){
