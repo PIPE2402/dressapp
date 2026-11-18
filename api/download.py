@@ -62,10 +62,21 @@ def download(request: DownloadRequest):
     except HTTPException:
         folder.cleanup()
         raise
-    except (subprocess.SubprocessError, OSError) as error:
+    except subprocess.CalledProcessError as error:
+        folder.cleanup()
+        detail = (error.stderr or b"").decode("utf-8", errors="replace")
+        logging.warning("Dressapp extractor failed: %s", detail[-1500:])
+        if "No module named" in detail:
+            raise HTTPException(503, "El motor de descarga no se pudo iniciar.") from error
+        if re.search(r"HTTP Error (?:403|429)|blocked|captcha|impersonation", detail, re.I):
+            raise HTTPException(422, "La plataforma rechazó la descarga desde el servidor.") from error
+        if re.search(r"ffmpeg|ffprobe", detail, re.I):
+            raise HTTPException(422, "El servidor no pudo convertir el archivo al formato elegido.") from error
+        raise HTTPException(422, "La plataforma no entregó el archivo. Comprueba que el video sea público e inténtalo de nuevo.") from error
+    except (subprocess.TimeoutExpired, OSError) as error:
         folder.cleanup()
         logging.warning("Dressapp download failed: %s", type(error).__name__)
-        raise HTTPException(422, "La plataforma no entregó el archivo. Comprueba que el video sea público e inténtalo de nuevo.") from error
+        raise HTTPException(503, "El servidor no pudo preparar el archivo. Inténtalo otra vez.") from error
 
     def chunks():
         try:
