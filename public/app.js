@@ -4,67 +4,73 @@ const format=document.querySelector('#format');
 const quality=document.querySelector('#quality');
 const submit=document.querySelector('#submit');
 const urlInput=document.querySelector('#url'),linkStatus=document.querySelector('#link-status');
-const localHosts=['localhost','127.0.0.1','[::1]'];
-const isLocal=localHosts.includes(location.hostname);
-let confirmed=null,localVideo,checkTimer,checkRequest,checkVersion=0,submitting=false,expiryTimer;
+let submitting=false;
+const platforms=['youtube.com','youtu.be','instagram.com','tiktok.com','facebook.com','fb.watch'];
+
+function validLink(value){
+ try{
+ const url=new URL(value);
+ return url.protocol==='https:'&&!url.username&&!url.password&&!url.port
+ &&platforms.some(host=>url.hostname===host||url.hostname.endsWith('.'+host));
+ }catch{return false;}
+}
 function updateSubmit(){
  const value=urlInput.value.trim();
- const openLocal=localVideo===value;
- submit.disabled=submitting||(!openLocal&&(!confirmed||confirmed.expires<=Date.now()||confirmed.url!==value));
- submit.textContent=openLocal?`Descargar ${format.value.toUpperCase()} en este equipo ↓`:`Descargar ${format.value.toUpperCase()} ↓`;
+ const valid=validLink(value);
+ const invalid=Boolean(value)&&!valid;
+ submit.disabled=submitting||!valid;
+ submit.textContent=submitting?'Preparando descarga…':`Descargar ${format.value.toUpperCase()} ↓`;
+ urlInput.setAttribute('aria-invalid',String(invalid));
+ urlInput.closest('.input').dataset.state=invalid?'error':'';
+ linkStatus.hidden=!invalid;
+ linkStatus.dataset.state='error';
+ linkStatus.textContent=invalid?'Usa un enlace HTTPS de YouTube, TikTok, Instagram o Facebook.':'';
 }
-function showLinkState(state,text){linkStatus.hidden=!text;linkStatus.dataset.state=state;linkStatus.textContent=text;urlInput.closest('.input').dataset.state=state;urlInput.setAttribute('aria-invalid',state==='error'?'true':'false');verifyAgain.hidden=!['error','loading'].includes(state);verifyAgain.disabled=state==='loading';verifyAgain.classList.toggle('is-loading',state==='loading');verifyAgain.querySelector('span').textContent=state==='loading'?'Verificando…':'Volver a verificar';}
-function openLocalApp(){
- const destination=new URL('http://localhost:3847/');
- destination.hash=new URLSearchParams({video:urlInput.value.trim(),format:format.value,quality:quality.value}).toString();
- location.assign(destination.href);
+function saveFile(url,name){
+ const link=document.createElement('a');
+ link.href=url;link.download=name;
+ document.body.append(link);link.click();link.remove();
 }
-async function recognize(){
- const value=urlInput.value.trim(),version=++checkVersion;
- checkRequest?.abort();clearTimeout(checkTimer);clearTimeout(expiryTimer);confirmed=null;localVideo=undefined;updateSubmit();
- if(!value){showLinkState('','');return;}
- let url;try{url=new URL(value);}catch{showLinkState('error','Pega un enlace completo que empiece con https://.');return;}
- const supported=['youtube.com','youtu.be','instagram.com','tiktok.com','facebook.com','fb.watch'];
- if(url.protocol!=='https:'||url.username||url.password||url.port||!supported.some(h=>url.hostname===h||url.hostname.endsWith('.'+h))){showLinkState('error','Usa un enlace HTTPS de YouTube, TikTok, Instagram o Facebook.');return;}
- showLinkState('loading','Reconociendo video… Estamos comprobando el enlace.');
- checkRequest=new AbortController();const request=checkRequest;
- const timeout=setTimeout(()=>request.abort(),65000);
- try{
- const response=await fetch('/api/inspect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:value}),signal:request.signal});
- if(version!==checkVersion)return;
- if(response.status===404||!response.headers.get('content-type')?.includes('application/json')){
- if(isLocal)throw Error('El servicio de descarga local no está disponible. Reinicia Dressapp y vuelve a verificar.');
- localVideo=value;
- showLinkState('local','La descarga se prepara en Dressapp local. Si la app está cerrada, abre iniciar.cmd antes de continuar.');
- return;
+async function downloadOnline(options){
+ const response=await fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},
+ body:JSON.stringify(options),signal:AbortSignal.timeout(125000)});
+ if(!response.ok){
+ const error=await response.json().catch(()=>null);
+ throw Error(typeof error?.detail==='string'?error.detail:'El servicio de descargas no pudo completar la solicitud.');
  }
- const info=await response.json();if(version!==checkVersion)return;
- if(!response.ok)throw Error(info.error||'No pudimos reconocer este video.');
- confirmed={...info,url:value};
- const seconds=info.duration?` · ${Math.floor(info.duration/60)}:${String(Math.floor(info.duration%60)).padStart(2,'0')}`:'';
- showLinkState('valid',`✓ Video reconocido · ${info.platform}${seconds}\n${info.title}`);updateSubmit();
- expiryTimer=setTimeout(()=>{confirmed=null;updateSubmit();showLinkState('error','La verificación caducó. Pulsa «Verificar de nuevo».');},Math.max(0,info.expires-Date.now()));
- }catch(e){if(version===checkVersion)showLinkState('error',request.signal.aborted?'La comprobación tardó demasiado. Puedes verificar de nuevo.':e.message);}
- finally{clearTimeout(timeout);if(version===checkVersion)updateSubmit();}
+ const type=options.format==='mp3'?'audio/mpeg':'video/mp4';
+ if(!response.headers.get('content-type')?.startsWith(type))throw Error('El servicio de descargas no devolvió el archivo.');
+ const file=await response.blob();
+ const url=URL.createObjectURL(file);
+ saveFile(url,`Dressapp.${options.format}`);
+ setTimeout(()=>URL.revokeObjectURL(url),60000);
+ msg.textContent='Archivo enviado a las descargas del navegador.';
 }
 urlInput.setAttribute('aria-describedby','link-status');
-urlInput.addEventListener('input',event=>{++checkVersion;checkRequest?.abort();clearTimeout(checkTimer);clearTimeout(expiryTimer);confirmed=null;localVideo=undefined;updateSubmit();showLinkState('','');if(urlInput.value.trim())checkTimer=setTimeout(recognize,event.inputType==='insertFromPaste'?0:250);});
-const verifyAgain=document.createElement('button');verifyAgain.type='button';verifyAgain.className='verify-again';verifyAgain.hidden=true;const retryIcon=document.createElement('i');retryIcon.textContent='↻';retryIcon.setAttribute('aria-hidden','true');const retryLabel=document.createElement('span');retryLabel.textContent='Volver a verificar';verifyAgain.append(retryIcon,retryLabel);verifyAgain.onclick=recognize;linkStatus.after(verifyAgain);
+urlInput.addEventListener('input',()=>{msg.textContent='';updateSubmit();});
 format.onchange=()=>{
  quality.disabled=format.value==='mp3';
  document.querySelector('#format-hint').textContent=format.value==='mp3'?'Solo audio en MP3 a 192 kbps.':'Video con audio en un archivo MP4.';
  updateSubmit();
 };
 document.querySelector('#paste').onclick=async()=>{
- try{urlInput.value=await navigator.clipboard.readText();recognize();}
+ try{urlInput.value=await navigator.clipboard.readText();msg.textContent='';updateSubmit();}
  catch{msg.textContent='Usa Ctrl + V para pegar tu enlace.';}
 };
 form.onsubmit=async e=>{
  e.preventDefault();msg.textContent='';updateSubmit();if(submit.disabled)return;
- if(localVideo===urlInput.value.trim()){openLocalApp();return;}
+ const options={url:urlInput.value.trim(),format:format.value,quality:quality.value};
  submitting=true;updateSubmit();
  try{
- const r=await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:urlInput.value.trim(),token:confirmed.token,quality:quality.value,format:format.value}),signal:AbortSignal.timeout(10000)});
+ const inspection=await fetch('/api/inspect',{method:'POST',headers:{'Content-Type':'application/json'},
+ body:JSON.stringify({url:options.url}),signal:AbortSignal.timeout(65000)});
+ if(inspection.status===404||!inspection.headers.get('content-type')?.includes('application/json')){
+ await downloadOnline(options);
+ return;
+ }
+ const info=await inspection.json();
+ if(!inspection.ok)throw Error(info.error||'No pudimos reconocer este video.');
+ const r=await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...options,token:info.token}),signal:AbortSignal.timeout(10000)});
  const j=await r.json();if(!r.ok)throw Error(j.error);
  const card=document.createElement('article');card.className='job';
  const title=document.createElement('h3'),progress=document.createElement('progress'),status=document.createElement('p');
@@ -89,17 +95,17 @@ form.onsubmit=async e=>{
  fallback.textContent='Tu navegador no pudo reproducir este archivo. Puedes guardarlo y abrirlo en tu dispositivo.';
  preview.addEventListener('error',()=>{fallback.hidden=false;});
  card.append(preview,fallback);
- const a=document.createElement('a');a.href='/files/'+j.id;a.textContent=`Guardar ${label} ↓`;a.download=data.file;card.append(a);
+ const a=document.createElement('a');a.href='/files/'+j.id;a.textContent=`Guardar ${label} ↓`;a.download=data.file;card.append(a);saveFile(a.href,data.file);
  }else if(data.status==='error'){
  if(data.details){const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Ver detalle técnico';pre.textContent=data.details;pre.style.whiteSpace='pre-wrap';details.append(summary,pre);card.append(details);}
- const retry=document.createElement('button');retry.className='paste';retry.textContent='Verificar para reintentar';retry.onclick=()=>{urlInput.value=j.url;format.value=j.format||'mp4';quality.value=j.quality;format.dispatchEvent(new Event('change'));quality.dispatchEvent(new Event('change'));recognize();form.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'center'});};card.append(retry);
+ const retry=document.createElement('button');retry.className='paste';retry.textContent='Volver a descargar';retry.onclick=()=>{urlInput.value=j.url;format.value=j.format||'mp4';quality.value=j.quality;format.dispatchEvent(new Event('change'));quality.dispatchEvent(new Event('change'));form.requestSubmit();};card.append(retry);
  }else setTimeout(poll,1200);
  }catch{title.textContent='Conexión con la app perdida';progress.hidden=true;status.textContent='Reinicia la app y vuelve a intentar la descarga.';}
  }
  poll();
  }catch(e){msg.textContent=e.message;}finally{submitting=false;updateSubmit();}
 };
-if(isLocal){
+if(['localhost','127.0.0.1','[::1]'].includes(location.hostname)){
  const incoming=new URLSearchParams(location.hash.slice(1));
  if(incoming.has('video')){
  urlInput.value=incoming.get('video');
@@ -110,4 +116,4 @@ if(isLocal){
  history.replaceState(null,'',location.pathname+location.search);
  }
 }
-updateSubmit();if(urlInput.value.trim())recognize();
+updateSubmit();

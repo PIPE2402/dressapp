@@ -22,6 +22,8 @@ Escoge **MP4 · Video + audio** o **MP3 · Solo audio** antes de descargar. MP3 
 
 ## Despliegue web
 
+En Vercel, `POST /api/download` prepara y envía el archivo al navegador en la misma solicitud. Admite MP4 y MP3 de hasta 64 MB. La página usa esta ruta cuando no tiene disponible la API de tareas del servidor Docker.
+
 Se incluye un Dockerfile Linux con Node.js, yt-dlp y FFmpeg. El alojamiento debe admitir contenedores y procesos; el hosting estático o Cloudflare Workers no puede ejecutar este motor.
 
 El mismo servidor debe servir la interfaz, `/api/inspect`, `/api/jobs` y los archivos descargados. Después de desplegar, comprueba que `GET /api/health` devuelva JSON con `recognition: true`. Si `POST /api/inspect` devuelve 404, el dominio no está sirviendo la API de Dressapp.
@@ -34,7 +36,7 @@ App local para Windows con Node.js 22 o superior. Interfaz en español para desc
 
 ## Abrir
 
-Desde la web publicada, si el servidor de descargas no está disponible, abre `iniciar.cmd` y pulsa **Descargar en este equipo** en la página. Dressapp local recibe el enlace, formato y calidad. Confirma la descarga en la app local. Los archivos se guardan en `downloads/` y el botón **Guardar MP4** o **Guardar MP3** permite descargarlos desde el navegador.
+Desde la web publicada, pega el enlace y pulsa **Descargar**. El navegador guarda el archivo según sus preferencias de descarga.
 
 Las dependencias ya están instaladas en este equipo. Haz doble clic en **iniciar.cmd** y abre http://localhost:3847. Mantén la ventana del servidor abierta mientras descargas. Los archivos quedan en `downloads/`; el botón **Guardar video** permite guardarlos también desde el navegador. El historial en pantalla dura hasta que cierres o recargues la página; los archivos permanecen en disco.
 

@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/download.py": {
+      "maxDuration": 120,
+      "excludeFiles": "{android/**,artifacts/**,downloads/**,node_modules/**}"
+    }
+  }
+}
