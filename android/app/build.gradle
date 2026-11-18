@@ -1,0 +1,65 @@
+plugins {
+    id 'com.android.application' version '8.7.3'
+}
+
+android {
+    namespace 'com.dressapp.mobile'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.dressapp.mobile'
+        minSdk 29
+        targetSdk 34
+        versionCode 3
+        versionName '1.2'
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86'
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += ['**/*.so']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets.main.assets.srcDir layout.buildDirectory.dir('generated/mobileAssets')
+}
+
+def prepareMobileAssets = tasks.register('prepareMobileAssets', Sync) {
+    from('../../public') {
+        include 'index.html', 'style.css', 'effects.css', 'refined.css', 'mobile.css',
+                'controls.js', 'icon-192.png'
+        filesMatching('index.html') {
+            filter { line -> line
+                    .replace('<link rel="manifest" href="/manifest.webmanifest">', '')
+                    .replace('<link rel="apple-touch-icon" href="/apple-touch-icon.png">', '')
+                    .replace('<script src="/install.js"></script>', '')
+                    .replace('/app.js', '/native.js')
+                    .replace('Descargador web', 'Android')
+                    .replace('desde tu navegador', 'en Descargas')
+                    .replace('Dressapp / Web', 'Dressapp / Android')
+            }
+        }
+        filteringCharset = 'UTF-8'
+    }
+    from('src/main/mobile')
+    into layout.buildDirectory.dir('generated/mobileAssets')
+}
+
+tasks.named('preBuild') { dependsOn prepareMobileAssets }
+
+dependencies {
+    implementation 'io.github.junkfood02.youtubedl-android:library:0.18.1'
+    implementation 'io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

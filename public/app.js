@@ -19,7 +19,12 @@ async function recognize(){
  const timeout=setTimeout(()=>request.abort(),65000);
  try{
  const response=await fetch('/api/inspect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:value}),signal:request.signal});
- if(response.status===404)throw Error('El servidor está desactualizado. Reinicia Dressapp con iniciar.cmd y recarga esta página.');
+ if(response.status===404){
+ const local=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
+ throw Error(local
+ ?'El servicio de descarga local no está disponible. Reinicia Dressapp y vuelve a verificar.'
+ :'Este sitio no tiene habilitado el servicio de descarga. En esta PC, usa Dressapp en http://localhost:3847.');
+ }
  const info=await response.json();if(version!==checkVersion)return;
  if(!response.ok)throw Error(info.error||'No pudimos reconocer este video.');
  confirmed={...info,url:value};

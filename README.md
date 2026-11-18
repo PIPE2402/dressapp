@@ -1,5 +1,7 @@
 # Dressapp
 
+Para el APK autónomo de Android, consulta las [instrucciones de instalación y compilación con Gradle](android/README.md).
+
 ## App instalable
 
 Incluye un manifiesto PWA, iconos para Android/iOS, botón Instalar app, apertura independiente y shell offline. Consulta [cómo instalarla y los requisitos de conexión](INSTALAR-APP.md). En esta PC se instala desde localhost con un navegador compatible; usarla en teléfonos necesita un servidor HTTPS accesible desde ellos. No hay una publicación móvil o URL pública completada. El motor de descarga sigue ejecutándose en el servidor.
@@ -21,6 +23,8 @@ Escoge **MP4 · Video + audio** o **MP3 · Solo audio** antes de descargar. MP3 
 ## Despliegue web
 
 Se incluye un Dockerfile Linux con Node.js, yt-dlp y FFmpeg. El alojamiento debe admitir contenedores y procesos; el hosting estático o Cloudflare Workers no puede ejecutar este motor.
+
+El mismo servidor debe servir la interfaz, `/api/inspect`, `/api/jobs` y los archivos descargados. Después de desplegar, comprueba que `GET /api/health` devuelva JSON con `recognition: true`. Si `POST /api/inspect` devuelve 404, el dominio no está sirviendo la API de Dressapp.
 
 Configura `PUBLIC_ORIGIN` con la URL HTTPS exacta asignada por el alojamiento, sin barra final. El contenedor escucha en `0.0.0.0` y respeta `PORT`. Los videos se almacenan temporalmente en el servidor; el almacenamiento puede desaparecer al reiniciar el contenedor. Antes de abrirlo a muchos usuarios faltan cuotas por usuario y limpieza automática. Esta preparación no equivale a un despliegue realizado; el contenedor no se pudo compilar aquí porque Docker no está instalado.
 

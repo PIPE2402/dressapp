@@ -72,7 +72,8 @@ export function downloadError(message){
  if(/timed? out|tiempo/i.test(message))return 'La plataforma no respondió a tiempo. No se descargó el video. Comprueba tu conexión e intenta de nuevo.';
  if(/not available|unavailable/i.test(message))return 'La plataforma indica que este video no está disponible. Comprueba el enlace o prueba con otro video público.';
  if(/sign in|login|cookies|private/i.test(message))return 'El video requiere iniciar sesión o es privado. Prueba con un video público que abra en tu navegador.';
- return 'No se pudo descargar el video. Prueba con otro enlace público. Puedes consultar el detalle técnico debajo.';
+ if(/\[facebook\][^\r\n]*Cannot parse data/i.test(message))return 'Facebook no entregó los datos del video para este enlace. Abre la publicación, entra al video y copia su enlace directo. Comprueba que el video se pueda reproducir sin iniciar sesión.';
+ return 'No se pudo descargar el video. Prueba con otro enlace público.';
 }
 function run(args,onLine){return new Promise((resolve,reject)=>{
  const p=spawn(ytDlp,['--ignore-config','--encoding','utf-8','--no-playlist','--socket-timeout','12','--retries','1','--extractor-retries','0',...args],{windowsHide:true,env:{...process.env,PYTHONIOENCODING:'utf-8'}});
