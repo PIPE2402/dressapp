@@ -6,23 +6,22 @@ const submit=document.querySelector('#submit');
 const urlInput=document.querySelector('#url'),linkStatus=document.querySelector('#link-status');
 const localHosts=['localhost','127.0.0.1','[::1]'];
 const isLocal=localHosts.includes(location.hostname);
-const localApp=document.createElement('a');
-localApp.className='verify-again';
-localApp.textContent='Abrir Dressapp en este equipo';
-localApp.hidden=true;
-linkStatus.after(localApp);
-let confirmed=null,checkTimer,checkRequest,checkVersion=0,submitting=false,expiryTimer;
-function updateSubmit(){submit.disabled=submitting||!confirmed||confirmed.expires<=Date.now()||confirmed.url!==urlInput.value.trim();}
-function showLinkState(state,text){linkStatus.hidden=!text;linkStatus.dataset.state=state;linkStatus.textContent=text;urlInput.closest('.input').dataset.state=state;urlInput.setAttribute('aria-invalid',state==='error'?'true':'false');verifyAgain.hidden=!['error','loading'].includes(state);verifyAgain.disabled=state==='loading';verifyAgain.classList.toggle('is-loading',state==='loading');verifyAgain.querySelector('span').textContent=state==='loading'?'Verificando…':'Volver a verificar';localApp.hidden=state!=='local';}
-function setLocalAppDestination(){
+let confirmed=null,localVideo,checkTimer,checkRequest,checkVersion=0,submitting=false,expiryTimer;
+function updateSubmit(){
+ const value=urlInput.value.trim();
+ const openLocal=localVideo===value;
+ submit.disabled=submitting||(!openLocal&&(!confirmed||confirmed.expires<=Date.now()||confirmed.url!==value));
+ submit.textContent=openLocal?`Descargar ${format.value.toUpperCase()} en este equipo ↓`:`Descargar ${format.value.toUpperCase()} ↓`;
+}
+function showLinkState(state,text){linkStatus.hidden=!text;linkStatus.dataset.state=state;linkStatus.textContent=text;urlInput.closest('.input').dataset.state=state;urlInput.setAttribute('aria-invalid',state==='error'?'true':'false');verifyAgain.hidden=!['error','loading'].includes(state);verifyAgain.disabled=state==='loading';verifyAgain.classList.toggle('is-loading',state==='loading');verifyAgain.querySelector('span').textContent=state==='loading'?'Verificando…':'Volver a verificar';}
+function openLocalApp(){
  const destination=new URL('http://localhost:3847/');
  destination.hash=new URLSearchParams({video:urlInput.value.trim(),format:format.value,quality:quality.value}).toString();
- localApp.href=destination.href;
+ location.assign(destination.href);
 }
-localApp.addEventListener('click',setLocalAppDestination);
 async function recognize(){
  const value=urlInput.value.trim(),version=++checkVersion;
- checkRequest?.abort();clearTimeout(checkTimer);clearTimeout(expiryTimer);confirmed=null;updateSubmit();
+ checkRequest?.abort();clearTimeout(checkTimer);clearTimeout(expiryTimer);confirmed=null;localVideo=undefined;updateSubmit();
  if(!value){showLinkState('','');return;}
  let url;try{url=new URL(value);}catch{showLinkState('error','Pega un enlace completo que empiece con https://.');return;}
  const supported=['youtube.com','youtu.be','instagram.com','tiktok.com','facebook.com','fb.watch'];
@@ -35,8 +34,8 @@ async function recognize(){
  if(version!==checkVersion)return;
  if(response.status===404||!response.headers.get('content-type')?.includes('application/json')){
  if(isLocal)throw Error('El servicio de descarga local no está disponible. Reinicia Dressapp y vuelve a verificar.');
- setLocalAppDestination();
- showLinkState('local','Inicia Dressapp con iniciar.cmd y abre la app local para guardar el archivo en este equipo.');
+ localVideo=value;
+ showLinkState('local','La descarga se prepara en Dressapp local. Si la app está cerrada, abre iniciar.cmd antes de continuar.');
  return;
  }
  const info=await response.json();if(version!==checkVersion)return;
@@ -49,19 +48,21 @@ async function recognize(){
  finally{clearTimeout(timeout);if(version===checkVersion)updateSubmit();}
 }
 urlInput.setAttribute('aria-describedby','link-status');
-urlInput.addEventListener('input',event=>{++checkVersion;checkRequest?.abort();clearTimeout(checkTimer);clearTimeout(expiryTimer);confirmed=null;updateSubmit();showLinkState('','');if(urlInput.value.trim())checkTimer=setTimeout(recognize,event.inputType==='insertFromPaste'?0:250);});
+urlInput.addEventListener('input',event=>{++checkVersion;checkRequest?.abort();clearTimeout(checkTimer);clearTimeout(expiryTimer);confirmed=null;localVideo=undefined;updateSubmit();showLinkState('','');if(urlInput.value.trim())checkTimer=setTimeout(recognize,event.inputType==='insertFromPaste'?0:250);});
 const verifyAgain=document.createElement('button');verifyAgain.type='button';verifyAgain.className='verify-again';verifyAgain.hidden=true;const retryIcon=document.createElement('i');retryIcon.textContent='↻';retryIcon.setAttribute('aria-hidden','true');const retryLabel=document.createElement('span');retryLabel.textContent='Volver a verificar';verifyAgain.append(retryIcon,retryLabel);verifyAgain.onclick=recognize;linkStatus.after(verifyAgain);
 format.onchange=()=>{
  quality.disabled=format.value==='mp3';
  document.querySelector('#format-hint').textContent=format.value==='mp3'?'Solo audio en MP3 a 192 kbps.':'Video con audio en un archivo MP4.';
- submit.textContent=`Descargar ${format.value.toUpperCase()} ↓`;
+ updateSubmit();
 };
 document.querySelector('#paste').onclick=async()=>{
  try{urlInput.value=await navigator.clipboard.readText();recognize();}
  catch{msg.textContent='Usa Ctrl + V para pegar tu enlace.';}
 };
 form.onsubmit=async e=>{
- e.preventDefault();msg.textContent='';updateSubmit();if(submit.disabled)return;submitting=true;updateSubmit();
+ e.preventDefault();msg.textContent='';updateSubmit();if(submit.disabled)return;
+ if(localVideo===urlInput.value.trim()){openLocalApp();return;}
+ submitting=true;updateSubmit();
  try{
  const r=await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:urlInput.value.trim(),token:confirmed.token,quality:quality.value,format:format.value}),signal:AbortSignal.timeout(10000)});
  const j=await r.json();if(!r.ok)throw Error(j.error);
