@@ -55,7 +55,8 @@ def download(request: DownloadRequest):
             command += ["-f", f"b[ext=mp4]{height}/bv*{height}+ba/b{height}",
                         "--merge-output-format", "mp4", "--recode-video", "mp4"]
 
-        subprocess.run([*command, "--", request.url], check=True, capture_output=True, timeout=90)
+        env = {**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)}
+        subprocess.run([*command, "--", request.url], check=True, capture_output=True, timeout=90, env=env)
         media = work / f"video.{request.format}"
         if not media.is_file() or not 0 < media.stat().st_size <= MAX_BYTES:
             raise HTTPException(422, "El archivo supera el límite de 64 MB o no está disponible.")
