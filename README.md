@@ -34,6 +34,8 @@ App local para Windows con Node.js 22 o superior. Interfaz en español para desc
 
 ## Abrir
 
+Desde la web publicada, si el servidor de descargas no está disponible, abre `iniciar.cmd` y pulsa **Abrir Dressapp en este equipo** en la página. Dressapp local recibe el enlace, formato y calidad. Los archivos se guardan en `downloads/` y el botón **Guardar MP4** o **Guardar MP3** permite descargarlos desde el navegador.
+
 Las dependencias ya están instaladas en este equipo. Haz doble clic en **iniciar.cmd** y abre http://localhost:3847. Mantén la ventana del servidor abierta mientras descargas. Los archivos quedan en `downloads/`; el botón **Guardar video** permite guardarlos también desde el navegador. El historial en pantalla dura hasta que cierres o recargues la página; los archivos permanecen en disco.
 
 Para instalar en otro equipo: instala Node.js y ejecuta `powershell -ExecutionPolicy Bypass -File instalar.ps1` desde esta carpeta. Este comando descarga el ejecutable oficial de yt-dlp e instala FFmpeg. Para actualizar el motor, vuelve a ejecutar el instalador.
