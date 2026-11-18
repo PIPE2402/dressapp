@@ -23,7 +23,7 @@ async function recognize(){
  const local=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
  throw Error(local
  ?'El servicio de descarga local no está disponible. Reinicia Dressapp y vuelve a verificar.'
- :'Este sitio no tiene habilitado el servicio de descarga. En esta PC, usa Dressapp en http://localhost:3847.');
+ :'El servidor de descargas no está conectado a este sitio.');
  }
  const info=await response.json();if(version!==checkVersion)return;
  if(!response.ok)throw Error(info.error||'No pudimos reconocer este video.');

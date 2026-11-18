@@ -26,7 +26,9 @@ Se incluye un Dockerfile Linux con Node.js, yt-dlp y FFmpeg. El alojamiento debe
 
 El mismo servidor debe servir la interfaz, `/api/inspect`, `/api/jobs` y los archivos descargados. Después de desplegar, comprueba que `GET /api/health` devuelva JSON con `recognition: true`. Si `POST /api/inspect` devuelve 404, el dominio no está sirviendo la API de Dressapp.
 
-Configura `PUBLIC_ORIGIN` con la URL HTTPS exacta asignada por el alojamiento, sin barra final. El contenedor escucha en `0.0.0.0` y respeta `PORT`. Los videos se almacenan temporalmente en el servidor; el almacenamiento puede desaparecer al reiniciar el contenedor. Antes de abrirlo a muchos usuarios faltan cuotas por usuario y limpieza automática. Esta preparación no equivale a un despliegue realizado; el contenedor no se pudo compilar aquí porque Docker no está instalado.
+El archivo `render.yaml` configura un servicio Docker gratuito con la rama `main` y la comprobación de salud. [Crear el servicio en Render](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2FPIPE2402%2Fdressapp). El servicio publica la interfaz y la API juntas en la URL HTTPS asignada por Render.
+
+Dressapp usa `RENDER_EXTERNAL_URL` automáticamente. Si usas otro alojamiento o un dominio personalizado, configura `PUBLIC_ORIGIN` con su URL HTTPS exacta, sin barra final. El contenedor escucha en `0.0.0.0` y respeta `PORT`. Los videos se almacenan temporalmente en el servidor y pueden desaparecer cuando el servicio reinicia. Si conservas la URL de Vercel, puedes redirigirla al servicio una vez que esté activo.
 
 App local para Windows con Node.js 22 o superior. Interfaz en español para descargar un video por enlace de YouTube, TikTok, Instagram o Facebook usando yt-dlp y FFmpeg.
 

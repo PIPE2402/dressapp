@@ -8,7 +8,7 @@ import {createReadStream} from 'node:fs';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const ytDlp=process.env.YTDLP_PATH||(process.platform==='win32'?path.join(root,'bin','yt-dlp.exe'):'yt-dlp');
 const ffmpeg=process.env.FFMPEG_PATH||path.join(root,'node_modules','ffmpeg-static',process.platform==='win32'?'ffmpeg.exe':'ffmpeg');
-const publicOrigin=process.env.PUBLIC_ORIGIN;
+const publicOrigin=process.env.PUBLIC_ORIGIN||process.env.RENDER_EXTERNAL_URL;
 let mediaReady;
 async function prepareMedia(){
  if(process.env.FFMPEG_PATH)return;
